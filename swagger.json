@@ -1,0 +1,46 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "My awesome API",
+    "version": "1.0"
+  },
+  "paths": {
+    "/echo": {
+      "post": {
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/EchoInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/definitions/EchoOutput"
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "EchoInput": {
+      "type": "object",
+      "properties": {
+        "phrase": {
+          "type": "string"
+        }
+      }
+    },
+    "EchoOutput": {
+      "type": "object",
+      "properties": {
+        "original_input": {
+          "$ref": "#/definitions/EchoInput"
+        }
+      }
+    }
+  }
+}

@@ -1,12 +1,16 @@
 package fastapi
 
 import (
+	"fmt"
+	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
 	"reflect"
-
-	"github.com/gin-gonic/gin"
 )
+
+type EchoCtx struct {
+	echo.Context
+}
 
 type Router struct {
 	routesMap map[string]interface{}
@@ -21,19 +25,19 @@ func NewRouter() *Router {
 func (r *Router) AddCall(path string, handler interface{}) {
 	handlerType := reflect.TypeOf(handler)
 
-	if handlerType.NumIn() != 2 {
-		panic("Wrong number of arguments")
-	}
-	if handlerType.NumOut() != 2 {
-		panic("Wrong number of return values")
-	}
+	//if handlerType.NumIn() != 2 {
+	//	panic("Wrong number of arguments")
+	//}
+	//if handlerType.NumOut() != 2 {
+	//	panic("Wrong number of return values")
+	//}
 
-	ginCtxType := reflect.TypeOf(&gin.Context{})
-	if !handlerType.In(0).ConvertibleTo(ginCtxType) {
-		panic("First argument should be *gin.Context!")
-	}
-	// fmt.Println(handlerType.In(1).Kind() == reflect.Struct)
-	if handlerType.In(1).Kind() != reflect.Struct {
+	//echoCtxType := reflect.TypeOf(&EchoCtx{})
+	//if !handlerType.In(0).ConvertibleTo(echoCtxType) {
+	//	panic("First argument should be *echo.Context!")
+	//}
+	fmt.Println(handlerType.In(0).Kind() == reflect.Struct)
+	if handlerType.In(0).Kind() != reflect.Struct {
 		panic("Second argument must be a struct")
 	}
 
@@ -48,37 +52,41 @@ func (r *Router) AddCall(path string, handler interface{}) {
 	r.routesMap[path] = handler
 }
 
-func (r *Router) GinHandler(c *gin.Context) {
+func (r *Router) EchoHandler(c echo.Context) error {
 	path := c.Param("path")
 	log.Print(path)
-	handlerFuncPtr, present := r.routesMap[path]
+	pathKey := "/" + path
+	handlerFuncPtr, present := r.routesMap[pathKey]
 	if !present {
-		c.JSON(http.StatusNotFound, gin.H{"error": "handler not found"})
-		return
+		return fmt.Errorf("handler not found")
 	}
 
 	handlerType := reflect.TypeOf(handlerFuncPtr)
-	inputType := handlerType.In(1)
+	inputType := handlerType.In(0)
 	inputVal := reflect.New(inputType).Interface()
-	err := c.BindJSON(inputVal)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-		return
-	}
+	//err := c.JSON(http.StatusOK, inputVal)
+	//if err != nil {
+	//	_ = c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
+	//	return
+	//}
 
 	toCall := reflect.ValueOf(handlerFuncPtr)
 	outputVal := toCall.Call(
 		[]reflect.Value{
-			reflect.ValueOf(c),
+			//reflect.ValueOf(c),
 			reflect.ValueOf(inputVal).Elem(),
 		},
 	)
 
 	returnedErr := outputVal[1].Interface()
 	if returnedErr != nil || !outputVal[1].IsNil() {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": returnedErr})
-		return
+		_ = c.JSON(http.StatusInternalServerError, map[string]interface{}{"error": returnedErr})
+		return fmt.Errorf("%v", returnedErr)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"response": outputVal[0].Interface()})
+	err := c.JSON(http.StatusOK, map[string]interface{}{"response": outputVal[0].Interface()})
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
 }

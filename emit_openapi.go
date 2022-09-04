@@ -22,7 +22,7 @@ func (r *Router) EmitOpenAPIDefinition() openapi.Swagger {
 	definitionTypes := make(map[string]reflect.Type)
 	for path, handlerFuncPtr := range r.routesMap {
 		handlerType := reflect.TypeOf(handlerFuncPtr)
-		inputType := handlerType.In(1)
+		inputType := handlerType.In(0)
 		definitionTypes[inputType.Name()] = inputType
 		for i := 0; i < inputType.NumField(); i++ {
 			field := inputType.Field(i)
